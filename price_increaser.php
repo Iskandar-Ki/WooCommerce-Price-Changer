@@ -1,167 +1,46 @@
 <?php
-
 include "conf.php";
+/** Do you want some cool messages? */
+$ENABLE_PRINT = True;
+/** Usually these values are default attribute to change product price.
+ * With this list, will be increase default price, min_price and max_price if you have variants
+ */
+$CHANGE_VALUES = ['_price','_min_variation_regular_price','_max_variation_regular_price','_max_variation_price','_regular_price','_sale_price'];
 
-$termid = "term_to_search";
-
-$percent_increase = true;
-$percent = 5.00;
-
-$numeral_increase = false;
-$numeral = 10.00;
-
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-            echo ">".$row["post_id"]."<";
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
+foreach( $TERM_ID_LIST as $TERM_ID ){
+    foreach( $CHANGE_VALUES as $param ){
+        try{
+            $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
+            $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+            $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key = '$param' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = $TERM_ID))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = $TERM_ID))) ))";
+            $results = $conn->query($sql);
+            foreach ($results as $row) {
+                if ($PERCENT_INCREASE) {
+                    $new_price = $row['meta_value']+($row['meta_value']*$INCREMENT_VALUE)/100;
+                }else{
+                    $new_price = $row['meta_value']+$INCREMENT_VALUE;
+                }
                 $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
                 $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
+                if ( $ENABLE_PRINT ){
+                    echo ">".$row["post_id"]."<";
+                    echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully";  
+                }       
             }
-            echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
+        }catch(PDOException $e){
+            echo "<span style=\"color:red\">Connection failed: " . $e->getMessage()."</span>";
+        }
+    } 
+    try{
+        $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
+        $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+        $sql = "DELETE FROM `wp_options` WHERE `option_name` LIKE ('%\_transient\_%')";
+        $results = $conn->query($sql);
+        if ( $ENABLE_PRINT ){
+            echo "<span style=\"color:green\">Cache deleted successfully</span>";
+        }
+    }catch(PDOException $e){
+        echo "<span style=\"color:red\">Connection failed: " . $e->getMessage()."</span>";
     }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
 }
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_min_variation_regular_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-        echo ">".$row["post_id"]."<";
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }
-        echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
-    }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_max_variation_regular_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }
-        echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
-    }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_max_variation_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-        echo ">".$row["post_id"]."<";
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }
-        echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
-    }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_min_variation_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-        echo ">".$row["post_id"]."<";
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }
-        echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
-    }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT * FROM  `wp_postmeta` WHERE meta_key =  '_regular_price' AND ( `post_id` IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) OR `post_id` IN (SELECT `ID` FROM wp_posts WHERE post_parent IN (SELECT `object_id` FROM `wp_term_relationships` WHERE term_taxonomy_id IN (SELECT `term_taxonomy_id` FROM wp_term_taxonomy WHERE (term_id = "+$termid+"))) ))";
-    $results = $conn->query($sql);
-    foreach ($results as $row) {
-        echo ">".$row["post_id"]."<";
-            if ($percent_increase) {
-                $new_price = $row['meta_value']+($row['meta_value']*$percent)/100;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }elseif ($numeral_increase) {
-                $new_price = $row['meta_value']+$numeral;
-                $new_price = round($new_price,2);
-                $sql2="UPDATE `wp_postmeta` SET `meta_value` = '".$new_price."' WHERE meta_id = ".$row['meta_id'];
-                $results2 = $conn->exec($sql2);
-            }
-        echo $row['meta_id']." ".$row['meta_value']." -> ".$new_price." Updated successfully\n";
-        
-    }
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-try{
-    $conn = new PDO("mysql:host=$servername;dbname=$dbname",$username,$password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    $sql = "DELETE FROM `wp_options` WHERE `option_name` LIKE ('%\_transient\_%')";
-    $results = $conn->query($sql);
-    echo "Cache Deleted successfully\n";
-
-}catch(PDOException $e){
-    echo "Connection failed: " . $e->getMessage();
-}
-
 ?>
